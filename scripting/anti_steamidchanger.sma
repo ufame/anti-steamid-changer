@@ -1,5 +1,4 @@
 #include <amxmodx>
-#include <amxmisc>
 #include <reapi>
 
 //will the configuration file be created automatically?
@@ -259,7 +258,7 @@ stock client_punishment(id)    {
 }
 
 stock load_white_list() {
-    get_localinfo("amxx_localinfo", g_szCfg, MAX_RESOURCE_PATH_LENGTH - 1);
+    get_configsdir(g_szCfg, MAX_RESOURCE_PATH_LENGTH - 1);
     add(g_szCfg, charsmax(g_szCfg), fmt("/%s", WHITE_LIST_FILE));
 
     if (!file_exists(g_szCfg))
