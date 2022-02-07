@@ -41,7 +41,7 @@ public plugin_init()    {
         "asc_flags",
         "l",
         _,
-        "Flag for access to the asc_add_white command (adding IP to the whitelist)"
+        "Flag for access to the asc_add_white and asc_clear_cache commands"
     );
     new szFlag[2];
     bind_pcvar_string(pCvar, szFlag, charsmax(szFlag));
