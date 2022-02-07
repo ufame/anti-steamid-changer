@@ -2,9 +2,18 @@
 #include <amxmisc>
 #include <reapi>
 
+//will the configuration file be created automatically?
+#define AUTO_CREATE_CONFIG
+
+//The path to the file relative to addons/amxmodx/configs
 new const WHITE_LIST_FILE[] = "settings/settings_asc_whitelist.ini";
 
-enum client_info_struct {
+const MAX_REASON_LENGTH     = 32;
+const MAX_COMMAND_LENGTH    = 32;
+const DEFAULT_ACCESS        = ADMIN_CFG; //Flag for access to the asc_add_white command (adding IP to the whitelist) 
+
+enum client_info_struct
+{
     CLIENT_IP[MAX_IP_LENGTH],
     CLIENT_STEAMID[MAX_AUTHID_LENGTH]
 };
@@ -18,14 +27,8 @@ new g_iWhiteList;
 new Array: g_aPunishCache;
 new g_iPunishCache;
 
-new g_iReasonCvar;
-new g_szReason[47];
-
-new g_iCommandCvar;
-new g_szPunishmentCommand[32];
-
-new g_iAddWhiteFlagCvar;
-new g_iAddWhiteFlag;
+new g_szReason[MAX_REASON_LENGTH];
+new g_szPunishmentCommand[MAX_COMMAND_LENGTH];
 
 new g_szCfg[MAX_RESOURCE_PATH_LENGTH];
 
@@ -34,49 +37,45 @@ public plugin_init()    {
 
     load_white_list();
 
-    g_iReasonCvar = create_cvar(
-        "asc_reason",
-        "SteamID Changer",
-        _,
-        "Reason to punish"
-    );
-
-    g_iCommandCvar = create_cvar(
-        "asc_command",
-        "fb_ban 44640 #userid#",
-        _,
-        "Punishment command"
-    );
-
-    g_iAddWhiteFlagCvar = create_cvar(
+    new pCvar = create_cvar(
         "asc_flags",
         "l",
         _,
         "Flag for access to the asc_add_white command (adding IP to the whitelist)"
     );
+    new szFlag[2];
+    bind_pcvar_string(pCvar, szFlag, charsmax(szFlag));
 
+    new iAccessWhiteList = (szFlag[0] != EOS) ? read_flags(szFlag) : DEFAULT_ACCESS;
+
+    pCvar = create_cvar(
+        "asc_reason",
+        "SteamID Changer",
+        _,
+        "The reason for the punishment"
+    );
+    bind_pcvar_string(pCvar, g_szReason, MAX_REASON_LENGTH - 1);
+
+    pCvar = create_cvar(
+        "asc_command",
+        "fb_ban 44640 #userid#",
+        _,
+        "The command to execute the punishment"
+    );
+    bind_pcvar_string(pCvar, g_szPunishmentCommand, MAX_COMMAND_LENGTH - 1);
+
+#if defined AUTO_CREATE_CONFIG
     AutoExecConfig(true, "anti_steamid_change", "punishments");
+#endif
 
-    RegisterHookChain(RH_Cvar_DirectSet, "RH_Cvar_DirectSet_Post", 1);
+    register_concmd("asc_clear_cache", "concmd_clear_cache", iAccessWhiteList, _, 1);
+    register_concmd("asc_add_white", "concmd_add_white", iAccessWhiteList, "- <name|steamid|userid>", 1);
 }
 
-public RH_Cvar_DirectSet_Post(pcvar, const value[]) {
-    if (pcvar == g_iReasonCvar) {
-        copy(g_szReason, charsmax(g_szReason), value);
-    }
-    else if (pcvar == g_iCommandCvar)    {
-        copy(g_szPunishmentCommand, charsmax(g_szPunishmentCommand), value);
-    }
-    else if (pcvar == g_iAddWhiteFlagCvar)    {
-        g_iAddWhiteFlag = read_flags(value);
-
-        register_concmd("asc_clear_cache", "concmd_clear_cache", g_iAddWhiteFlag, _, 1);
-        register_concmd("asc_add_white", "concmd_add_white", g_iAddWhiteFlag, "<name|steamid|userid>", 1);
-    }
-}
-
-public concmd_clear_cache(id, level)   {
-    if (!access(id, level)) {
+public concmd_clear_cache(id, level)
+{
+    if (!access(id, level))
+    {
         server_print("[ASC] No have access to that command");
 
         return PLUGIN_HANDLED;
@@ -91,8 +90,10 @@ public concmd_clear_cache(id, level)   {
     return PLUGIN_HANDLED;
 }
 
-public concmd_add_white(id, level)  {
-    if (!access(id, level)) {
+public concmd_add_white(id, level)
+{
+    if (!access(id, level))
+    {
         server_print("[ASC] No have access to that command");
 
         return PLUGIN_HANDLED;
@@ -103,7 +104,8 @@ public concmd_add_white(id, level)  {
 
     new player = cmd_target(id, szArg, CMDTARGET_NO_BOTS);
 
-    if (!player)    {
+    if (!player)
+    {
         server_print("[ASC] No players find yet");
 
         return PLUGIN_HANDLED;
@@ -112,7 +114,8 @@ public concmd_add_white(id, level)  {
     new szIp[MAX_IP_LENGTH];
     get_user_ip(player, szIp, MAX_IP_LENGTH - 1, 1);
 
-    if (g_iWhiteList && ArrayFindString(g_aWhiteList, szIp) != -1)  {
+    if (g_iWhiteList && ArrayFindString(g_aWhiteList, szIp) != -1)
+    {
         server_print("[ASC] This player already have immunity");
 
         return PLUGIN_HANDLED;
@@ -125,12 +128,14 @@ public concmd_add_white(id, level)  {
     new iExists = file_exists(g_szCfg);
     file = fopen(g_szCfg, iExists ? "at" : "wt");
 
-    if (!iExists)   {
+    if (!iExists)
+    {
         fputs(file, "; Anti SteamID Changer - whitelist");
         fputs(file, "; Formatting file is - <ip> ; comment");
     }
 
-    if (!file)  {
+    if (!file)
+    {
         server_print("[ASC] White list file read error");
 
         return PLUGIN_HANDLED;
@@ -139,9 +144,8 @@ public concmd_add_white(id, level)  {
     new bSuccess = fputs(file, buffer);
     server_print("[ASC] Player %n (%s) %s added to white list", player, szIp, bSuccess ? "successfully" : "failure");
 
-    if (!g_aWhiteList)  {
+    if (!g_aWhiteList)
         g_aWhiteList = ArrayCreate(MAX_IP_LENGTH + 1, 1);
-    }
 
     ArrayPushString(g_aWhiteList, szIp);
 
@@ -150,46 +154,59 @@ public concmd_add_white(id, level)  {
     return PLUGIN_HANDLED;
 }
 
-public client_putinserver(id)   {
+public client_putinserver(id)
+{
+    if (is_user_bot(id) || is_user_hltv(id))
+        return;
+
     new szIp[MAX_IP_LENGTH];
     get_user_ip(id, szIp, MAX_IP_LENGTH - 1, 1);
 
-    if (g_iPunishCache) {
-        if (ArrayFindString(g_aPunishCache, szIp) != -1)    {
+    if (g_iPunishCache)
+    {
+        if (ArrayFindString(g_aPunishCache, szIp) != -1)
+        {
             server_cmd("kick #%d %s", get_user_userid(id), g_szReason);
 
             return;
         }
     }
 
-    if (g_iClients && !is_user_hltv(id)) {
-        new szOutput[client_info_struct], bool: bGotcha, iItemId;
+    //We have a saved players?
+    if (g_iClients)
+    {
+        new szOutput[client_info_struct], iItemId;
 
-        for (new i; i < g_iClients; i++)    {
+        for (new i; i < g_iClients; i++)
+        {
             ArrayGetArray(g_aClientsInfo, i, szOutput, sizeof szOutput);
 
+            //check: client in array
             if (equal(szOutput[CLIENT_IP], szIp))   {
-                bGotcha = true;
                 iItemId = i;
 
                 break;
             }
         }
 
-        if (bGotcha)    {
+        //gotcha
+        if (iItemId)
+        {
             new szAuthid[MAX_AUTHID_LENGTH];
             get_user_authid(id, szAuthid, MAX_AUTHID_LENGTH - 1);
 
-            if (!equal(szAuthid, szOutput[CLIENT_STEAMID])) {
-                client_punishment(id);
+            //check: client authid != authid in disconnected
+            if (!equal(szAuthid, szOutput[CLIENT_STEAMID]))
+            {
+                client_punishment(id); //punishment a bad player *uwu*
 
-                ArrayDeleteItem(g_aClientsInfo, iItemId);
+                ArrayDeleteItem(g_aClientsInfo, iItemId); //clear this client from array to prevent double punishment
                 g_iClients--;
 
-                if (!g_aPunishCache)    {
+                if (!g_aPunishCache)
                     g_aPunishCache = ArrayCreate(MAX_IP_LENGTH + 1, 1);
-                }
 
+                //add to cache
                 ArrayPushString(g_aPunishCache, szIp);
                 g_iPunishCache++;
             }
@@ -197,24 +214,23 @@ public client_putinserver(id)   {
     }
 }
 
-public client_disconnected(id)  {
-    if (is_user_bot(id))    {
+public client_disconnected(id)
+{
+    if (is_user_bot(id) || is_user_hltv(id))
         return;
-    }
 
-    if (!g_aClientsInfo)    {
+    if (!g_aClientsInfo)
         g_aClientsInfo = ArrayCreate(client_info_struct);
-    }
 
     new szInput[client_info_struct];
 
     get_user_ip(id, szInput[CLIENT_IP], MAX_IP_LENGTH - 1, 1);
     get_user_authid(id, szInput[CLIENT_STEAMID], MAX_AUTHID_LENGTH - 1);
 
-    if (g_iWhiteList)   {
-        if (ArrayFindString(g_aWhiteList, szInput[CLIENT_IP]) != -1)    {
+    if (g_iWhiteList)
+    {
+        if (ArrayFindString(g_aWhiteList, szInput[CLIENT_IP]) != -1)
             return;
-        }
     }
 
     ArrayPushArray(g_aClientsInfo, szInput);
@@ -232,7 +248,7 @@ stock client_punishment(id)    {
     replace_string(g_szPunishmentCommand, charsmax(g_szPunishmentCommand), "#authid#", szAuthid, false);
 
     if (contain(g_szPunishmentCommand, "banip") != -1 || contain(g_szPunishmentCommand, "banid") != -1) {
-        server_cmd("%s; writeip; writeid", g_szPunishmentCommand);
+        server_cmd("%s; writeip; writeid; wait; kick #%d %s", g_szPunishmentCommand, get_user_userid(id), g_szPunishmentCommand);
         server_exec();
 
         return;
@@ -243,18 +259,20 @@ stock client_punishment(id)    {
 }
 
 stock load_white_list() {
-    get_configsdir(g_szCfg, MAX_RESOURCE_PATH_LENGTH - 1);
+    get_localinfo("amxx_localinfo", g_szCfg, MAX_RESOURCE_PATH_LENGTH - 1);
     add(g_szCfg, charsmax(g_szCfg), fmt("/%s", WHITE_LIST_FILE));
 
-    if (!file_exists(g_szCfg))    {
-        log_error(AMX_ERR_NATIVE, "File %s is not exists", g_szCfg);
+    if (!file_exists(g_szCfg))
+    {
+        log_error(AMX_ERR_NATIVE, "File '%s' is not exists", g_szCfg);
 
         return;
     }
 
     new file = fopen(g_szCfg, "rt");
 
-    if (!file)  {
+    if (!file)
+    {
         log_error(AMX_ERR_NATIVE, "File %s open error", g_szCfg);
 
         return;
@@ -264,7 +282,8 @@ stock load_white_list() {
 
     new buffer[64], szIp[MAX_IP_LENGTH];
 
-    while (!feof(file)) {
+    while (!feof(file))
+    {
         fgets(file, buffer, charsmax(buffer));
 
         if (buffer[0] == EOS || buffer[0] == ';')   {
@@ -285,27 +304,30 @@ stock load_white_list() {
     fclose(file);
 }
 
-new const COMMENTS[] =   {
+new const COMMENTS[] =
+{
     '#', ';'
 };
 
 new const QUOTE = '^"';
 
-stock delete_comment(szString[])    {
+stock delete_comment(szString[])
+{
     new len = strlen(szString);
     new bool: bInQuotes;
 
-    for (new i; i < len; i++)   {
-        if (szString[i] == QUOTE)    {
+    for (new i; i < len; i++)
+    {
+        if (szString[i] == QUOTE)
             bInQuotes = !bInQuotes;
-        }
 
-        if (bInQuotes)  {
+        if (bInQuotes)
             continue;
-        }
 
-        for (new c; c < sizeof COMMENTS; c++)   {
-            if (szString[i] == COMMENTS[c]) {
+        for (new c; c < sizeof COMMENTS; c++)
+        {
+            if (szString[i] == COMMENTS[c])
+            {
                 szString[i] = EOS;
 
                 break;
