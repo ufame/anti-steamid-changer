@@ -1,4 +1,5 @@
 #include <amxmodx>
+#include <amxmisc>
 #include <reapi>
 
 //will the configuration file be created automatically?
@@ -9,7 +10,7 @@ new const WHITE_LIST_FILE[] = "settings/settings_asc_whitelist.ini";
 
 const MAX_REASON_LENGTH     = 32;
 const MAX_COMMAND_LENGTH    = 32;
-const DEFAULT_ACCESS        = ADMIN_CFG; //Flag for access to the asc_add_white command (adding IP to the whitelist) 
+const DEFAULT_ACCESS        = ADMIN_CFG; //Flag for access to the asc_add_white and asc_clear_cache commands
 
 enum client_info_struct
 {
@@ -45,7 +46,7 @@ public plugin_init()    {
     new szFlag[2];
     bind_pcvar_string(pCvar, szFlag, charsmax(szFlag));
 
-    new iAccessWhiteList = (szFlag[0] != EOS) ? read_flags(szFlag) : DEFAULT_ACCESS;
+    new iAccess = (szFlag[0] != EOS) ? read_flags(szFlag) : DEFAULT_ACCESS;
 
     pCvar = create_cvar(
         "asc_reason",
@@ -67,8 +68,8 @@ public plugin_init()    {
     AutoExecConfig(true, "anti_steamid_change", "punishments");
 #endif
 
-    register_concmd("asc_clear_cache", "concmd_clear_cache", iAccessWhiteList, _, 1);
-    register_concmd("asc_add_white", "concmd_add_white", iAccessWhiteList, "- <name|steamid|userid>", 1);
+    register_concmd("asc_clear_cache", "concmd_clear_cache", iAccess, _, 1);
+    register_concmd("asc_add_white", "concmd_add_white", iAccess, "- <name|steamid|userid>", 1);
 }
 
 public concmd_clear_cache(id, level)
@@ -246,7 +247,7 @@ stock client_punishment(id)    {
     replace_string(g_szPunishmentCommand, charsmax(g_szPunishmentCommand), "#ip#", szIp, false);
     replace_string(g_szPunishmentCommand, charsmax(g_szPunishmentCommand), "#authid#", szAuthid, false);
 
-    if (contain(g_szPunishmentCommand, "banip") != -1 || contain(g_szPunishmentCommand, "banid") != -1) {
+    if (contain(g_szPunishmentCommand, "addip") != -1 || contain(g_szPunishmentCommand, "banid") != -1) {
         server_cmd("%s; writeip; writeid; wait; kick #%d %s", g_szPunishmentCommand, get_user_userid(id), g_szPunishmentCommand);
         server_exec();
 
