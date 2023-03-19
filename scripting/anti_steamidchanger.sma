@@ -44,7 +44,7 @@ public plugin_init()    {
         "Flag for access to the asc_add_white and asc_clear_cache commands"
     );
     new szFlag[2];
-    bind_pcvar_string(pCvar, szFlag, charsmax(szFlag));
+    get_pcvar_string(pCvar, szFlag, charsmax(szFlag));
 
     new iAccess = (szFlag[0] != EOS) ? read_flags(szFlag) : DEFAULT_ACCESS;
 
