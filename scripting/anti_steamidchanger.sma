@@ -32,7 +32,7 @@ new g_szPunishmentCommand[MAX_COMMAND_LENGTH];
 new g_szCfg[MAX_RESOURCE_PATH_LENGTH];
 
 public plugin_init() {
-  register_plugin("Anti steamid changer", "1.0.4", "m4ts");
+  register_plugin("Anti steamid changer", "1.0.4", "ufame");
 
   load_white_list();
 
