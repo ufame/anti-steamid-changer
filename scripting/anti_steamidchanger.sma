@@ -29,6 +29,8 @@ new g_iPunishCache;
 new g_szReason[MAX_REASON_LENGTH];
 new g_szPunishmentCommand[MAX_COMMAND_LENGTH];
 
+new g_iCommandsAccess = DEFAULT_ACCESS;
+
 new g_szCfg[MAX_RESOURCE_PATH_LENGTH];
 
 public plugin_init() {
@@ -42,11 +44,8 @@ public plugin_init() {
     _,
     "Flag for access to the asc_add_white and asc_clear_cache commands"
   );
-
-  new szFlag[2];
-  get_pcvar_string(pCvar, szFlag, charsmax(szFlag));
-
-  new iAccess = (szFlag[0] != EOS) ? read_flags(szFlag) : DEFAULT_ACCESS;
+  hook_cvar_change(pCvar, "cvarhook_asc_flags");
+  cvarhook_asc_flags(pCvar);
 
   pCvar = create_cvar(
     "asc_reason",
@@ -68,12 +67,19 @@ public plugin_init() {
   AutoExecConfig(true, "anti_steamid_change", "punishments");
 #endif
 
-  register_concmd("asc_clear_cache", "concmd_clear_cache", iAccess, _, 1);
-  register_concmd("asc_add_white", "concmd_add_white", iAccess, "- <name|steamid|userid>", 1);
+  register_concmd("asc_clear_cache", "concmd_clear_cache");
+  register_concmd("asc_add_white", "concmd_add_white", _, "- <name|steamid|userid>");
 }
 
-public concmd_clear_cache(id, level) {
-  if (!access(id, level)) {
+public cvarhook_asc_flags(pcvar) {
+  new szFlag[2];
+  get_pcvar_string(pcvar, szFlag, charsmax(szFlag));
+
+  g_iCommandsAccess = (szFlag[0] != EOS) ? read_flags(szFlag) : DEFAULT_ACCESS;
+}
+
+public concmd_clear_cache(id) {
+  if (!access(id, g_iCommandsAccess)) {
     server_print("[ASC] No have access to that command");
 
     return PLUGIN_HANDLED;
@@ -87,8 +93,8 @@ public concmd_clear_cache(id, level) {
   return PLUGIN_HANDLED;
 }
 
-public concmd_add_white(id, level) {
-  if (!access(id, level)) {
+public concmd_add_white(id) {
+  if (!access(id, g_iCommandsAccess)) {
     server_print("[ASC] No have access to that command");
 
     return PLUGIN_HANDLED;
