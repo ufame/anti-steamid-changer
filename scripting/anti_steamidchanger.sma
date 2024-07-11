@@ -228,18 +228,21 @@ stock client_punishment(id) {
   get_user_ip(id, szIp, MAX_IP_LENGTH - 1, 1);
   get_user_authid(id, szAuthid, MAX_AUTHID_LENGTH - 1);
 
-  replace_string(g_szPunishmentCommand, charsmax(g_szPunishmentCommand), "#userid#", fmt("#%d", get_user_userid(id)), false);
-  replace_string(g_szPunishmentCommand, charsmax(g_szPunishmentCommand), "#ip#", szIp, false);
-  replace_string(g_szPunishmentCommand, charsmax(g_szPunishmentCommand), "#authid#", szAuthid, false);
+  new tempPunishCommand[MAX_COMMAND_LENGTH];
+  copy(tempPunishCommand, MAX_COMMAND_LENGTH - 1, g_szPunishmentCommand);
 
-  if (contain(g_szPunishmentCommand, "addip") != -1 || contain(g_szPunishmentCommand, "banid") != -1) {
-    server_cmd("%s; writeip; writeid; wait; kick #%d %s", g_szPunishmentCommand, get_user_userid(id), g_szPunishmentCommand);
+  replace_string(tempPunishCommand, charsmax(tempPunishCommand), "#userid#", fmt("#%d", get_user_userid(id)), false);
+  replace_string(tempPunishCommand, charsmax(tempPunishCommand), "#ip#", szIp, false);
+  replace_string(tempPunishCommand, charsmax(tempPunishCommand), "#authid#", szAuthid, false);
+
+  if (contain(tempPunishCommand, "addip") != -1 || contain(tempPunishCommand, "banid") != -1) {
+    server_cmd("%s; writeip; writeid; wait; kick #%d %s", tempPunishCommand, get_user_userid(id), tempPunishCommand);
     server_exec();
 
     return;
   }
 
-  server_cmd("%s %s", g_szPunishmentCommand, g_szReason);
+  server_cmd("%s %s", tempPunishCommand, g_szReason);
   server_exec();
 }
 
