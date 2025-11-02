@@ -34,7 +34,7 @@ new g_iCommandsAccess = DEFAULT_ACCESS;
 new g_szCfg[MAX_RESOURCE_PATH_LENGTH];
 
 public plugin_init() {
-  register_plugin("Anti steamid changer", "1.0.5", "ufame");
+  register_plugin("Anti steamid changer", "1.0.7", "ufame");
 
   load_white_list();
 
@@ -165,13 +165,13 @@ public client_putinserver(id) {
 
   //We have a saved players?
   if (g_iClients) {
-    new szOutput[Client], iItemId;
+    new szOutput[Client], iItemId = -1;
 
     for (new i; i < g_iClients; i++) {
       ArrayGetArray(g_aClientsInfo, i, szOutput, sizeof szOutput);
 
       //check: client in array
-      if (equal(szOutput[ClientIp], szIp))   {
+      if (equal(szOutput[ClientIp], szIp)) {
         iItemId = i;
 
         break;
@@ -179,23 +179,24 @@ public client_putinserver(id) {
     }
 
     //gotcha
-    if (iItemId) {
+    if (iItemId != -1) {
       new szAuthid[MAX_AUTHID_LENGTH];
       get_user_authid(id, szAuthid, MAX_AUTHID_LENGTH - 1);
 
       //check: client authid != authid in disconnected
       if (!equal(szAuthid, szOutput[ClientAuthid])) {
-        client_punishment(id); //punishment a bad player *uwu*
+        if (!is_same_ip_other_connected(id, szIp, szAuthid)) {
+          client_punishment(id);
 
-        ArrayDeleteItem(g_aClientsInfo, iItemId); //clear this client from array to prevent double punishment
-        g_iClients--;
+          //add to punish cache
+          if (!g_aPunishCache)
+            g_aPunishCache = ArrayCreate(MAX_IP_LENGTH + 1, 1);
 
-        if (!g_aPunishCache)
-          g_aPunishCache = ArrayCreate(MAX_IP_LENGTH + 1, 1);
-
-        //add to cache
-        ArrayPushString(g_aPunishCache, szIp);
-        g_iPunishCache++;
+          ArrayPushString(g_aPunishCache, szIp);
+          g_iPunishCache++;
+        } else {
+          server_print("[ASC] Same IP detected: skipping punishment for %s (%s | %s)", id, szIp, szAuthid);
+        }
       }
     }
   }
@@ -215,12 +216,33 @@ public client_disconnected(id) {
 
   if (g_iWhiteList) {
     if (ArrayFindString(g_aWhiteList, szInput[ClientIp]) != -1)
-    return;
+      return;
   }
 
   ArrayPushArray(g_aClientsInfo, szInput);
   g_iClients++;
 }
+
+stock bool: is_same_ip_other_connected(id, const szIp[], const szAuthid[]) {
+  new tempIp[MAX_IP_LENGTH], tempAuth[MAX_AUTHID_LENGTH];
+
+  for (new i = 1; i <= MaxClients; i++) {
+    if (!is_user_connected(i) || is_user_bot(i) || is_user_hltv(i))
+      continue;
+
+    if (i == id)
+      continue;
+
+    get_user_ip(i, tempIp, charsmax(tempIp), 1);
+    get_user_authid(i, tempAuth, charsmax(tempAuth));
+
+    if (equal(tempIp, szIp) && !equal(tempAuth, szAuthid))
+      return true;
+  }
+
+  return false;
+}
+
 
 stock client_punishment(id) {
   new szIp[MAX_IP_LENGTH], szAuthid[MAX_AUTHID_LENGTH];
