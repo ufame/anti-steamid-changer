@@ -219,6 +219,9 @@ public client_disconnected(id) {
       return;
   }
 
+  if (ArrayFindString(g_aClientsInfo, szInput[ClientIp]) != -1)
+    return;
+
   ArrayPushArray(g_aClientsInfo, szInput);
   g_iClients++;
 }
